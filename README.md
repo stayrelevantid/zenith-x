@@ -37,9 +37,10 @@ graph TD
 - **Orchestration:** GKE (Standard Cluster, Spot Nodes)
 - **GitOps:** ArgoCD
 - **Ingress:** Traefik
-- **SSL:** Cert-Manager (Let's Encrypt)
+- **SSL:** Cert-Manager (Let's Encrypt - HTTP-01 or TLS-ALPN-01)
 - **CI/CD:** GitHub Actions (with Workload Identity Federation)
 - **App:** Golang (chi router, Docker Multi-stage)
+- **Certificate Management:** Custom `Certificate` CRDs for automated issuance.
 
 ## 🚀 Step-by-Step Guide
 
@@ -84,8 +85,8 @@ kubectl apply -f argocd-bootstrap/root-app.yaml
 Setup GitHub Secrets for Workload Identity Federation:
 1. Go to your GitHub Repository -> Settings -> Secrets and variables -> Actions.
 2. Add the following secrets (get values from Terraform outputs or gcloud):
-   - `WIF_PROVIDER`: The full resource name of the WIF provider.
-   - `WIF_SERVICE_ACCOUNT`: The service account email managed by WIF.
+    - `WIF_PROVIDER`: The full resource name of the WIF provider (e.g., `projects/.../global/workloadIdentityPools/...`).
+    - `WIF_SERVICE_ACCOUNT`: The service account email (e.g., `zenith-x-gke-sa@stayrelevantid.iam.gserviceaccount.com`).
 
 ### 6. Verify Deployment
 Once secrets are set, push a change to the `app/` directory. GitHub Actions will build the image, push it to GAR, and update the k8s manifests. ArgoCD will then sync the changes.
@@ -124,8 +125,9 @@ terraform destroy
 ```
 
 ## 🔗 Endpoints
-- **App:** `https://masmasdeploy.my.id` (Requires DNS point to Traefik LoadBalancer IP)
+- **App:** [https://masmasdeploy.my.id](https://masmasdeploy.my.id)
 - **Health:** `/health`
+- **SSL Certificates:** Automatically managed by cert-manager and issued by Let's Encrypt.
 
 ---
 Managed by **Antigravity AI**

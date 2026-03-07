@@ -37,11 +37,11 @@ zenith-x/
 ```
 
 ## 4. Execution Phases (Workflow)
-- **Phase 1 (Infra)**: `terraform init` -> `terraform apply`. Fokus pada networking, GKE Spot, dan IAM Roles untuk Workload Identity.
-- **Phase 2 (GitOps)**: Install ArgoCD via Helm. Point ArgoCD ke folder `argocd-bootstrap/`.
-- **Phase 3 (Core Services)**: ArgoCD otomatis men-deploy Traefik, Cert-Manager, dan ESO berdasarkan manifest di Git.
-- **Phase 4 (App Deployment)**: GitHub Actions memicu build image ke GAR dan mengupdate tag di `k8s-manifests/`. ArgoCD melakukan sinkronisasi otomatis.
-- **Phase 5 (Cleanup)**: Prosedur manual `terraform destroy` dari terminal lokal.
+- **Phase 1 (Infra)**: [COMPLETED] `terraform init` -> `terraform apply`. Fokus pada networking, GKE Spot, dan IAM Roles untuk Workload Identity.
+- **Phase 2 (GitOps)**: [COMPLETED] Install ArgoCD via Helm. Point ArgoCD ke folder `argocd-bootstrap/`.
+- **Phase 3 (Core Services)**: [COMPLETED] ArgoCD otomatis men-deploy Traefik, Cert-Manager, dan ESO berdasarkan manifest di Git.
+- **Phase 4 (App Deployment)**: [COMPLETED] GitHub Actions memicu build image ke GAR dan mengupdate tag di `k8s-manifests/`. ArgoCD melakukan sinkronisasi otomatis.
+- **Phase 5 (Cleanup)**: [PLANNED] Prosedur manual `terraform destroy` dari terminal lokal.
 
 ## 5. Specific Constraints for AI Generator
 - **Labeling**: All resources must have label `project: zenith-x` and `env: testing`.
