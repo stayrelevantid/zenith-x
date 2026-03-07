@@ -28,6 +28,8 @@ spec:
                   mountPath: /data
         service:
           type: LoadBalancer
+          spec:
+            externalTrafficPolicy: Local
         providers:
           kubernetesCRD:
             enabled: true
