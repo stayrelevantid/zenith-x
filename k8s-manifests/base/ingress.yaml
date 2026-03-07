@@ -15,4 +15,4 @@ spec:
         - name: app
           port: 80
   tls:
-    certResolver: letsencrypt
+    secretName: masmasdeploy-tls

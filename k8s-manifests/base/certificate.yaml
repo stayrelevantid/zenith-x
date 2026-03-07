@@ -1,0 +1,13 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: masmasdeploy-cert
+  namespace: default
+spec:
+  secretName: masmasdeploy-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  commonName: masmasdeploy.my.id
+  dnsNames:
+    - masmasdeploy.my.id
