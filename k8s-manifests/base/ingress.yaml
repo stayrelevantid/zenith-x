@@ -1,0 +1,18 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: app
+  labels:
+    app: app
+    project: zenith-x
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`app.example.com`)  # Ganti dengan domain Anda
+      kind: Rule
+      services:
+        - name: app
+          port: 80
+  tls:
+    certResolver: letsencrypt

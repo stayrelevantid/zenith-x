@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: default
+
+resources:
+  - ../../base
+
+# Image tag will be updated by GitHub Actions CI/CD
+images:
+  - name: asia-southeast2-docker.pkg.dev/stayrelevantid/zenith-x-registry/app
+    newTag: latest
+
+commonLabels:
+  env: testing
+
+patches:
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+    target:
+      kind: Deployment
+      name: app
