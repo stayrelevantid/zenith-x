@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cluster-issuer
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.io
+  # Wait for cert-manager to be ready before applying
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/stayrelevantid/zenith-x.git
+    targetRevision: main
+    path: argocd-bootstrap/configs/cluster-issuer
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cert-manager
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

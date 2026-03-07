@@ -1,0 +1,17 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+  labels:
+    project: zenith-x
+    env: testing
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: admin@stayrelevant.id  # ganti dengan email aktif
+    privateKeySecretRef:
+      name: letsencrypt-staging
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: traefik

@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: traefik
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.io
+spec:
+  project: default
+  source:
+    repoURL: https://traefik.github.io/charts
+    chart: traefik
+    targetRevision: "30.x.x"
+    helm:
+      values: |
+        deployment:
+          replicas: 1
+        service:
+          type: LoadBalancer
+        providers:
+          kubernetesCRD:
+            enabled: true
+          kubernetesIngress:
+            enabled: true
+        logs:
+          general:
+            level: INFO
+        commonLabels:
+          project: zenith-x
+          env: testing
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: traefik
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
