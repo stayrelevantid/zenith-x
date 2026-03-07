@@ -43,7 +43,7 @@ spec:
         additionalArguments:
           - "--certificatesresolvers.letsencrypt.acme.email=admin@masmasdeploy.my.id"
           - "--certificatesresolvers.letsencrypt.acme.storage=/data/acme.json"
-          - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+          - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
         persistence:
           enabled: true
           size: 128Mi
