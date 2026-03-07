@@ -34,6 +34,13 @@ resource "google_container_cluster" "primary" {
   release_channel {
     channel = "REGULAR"
   }
+
+  lifecycle {
+    ignore_changes = [
+      node_config,
+      resource_labels,
+    ]
+  }
 }
 
 # Spot VM Node Pool
@@ -72,6 +79,8 @@ resource "google_container_node_pool" "spot_node_pool" {
   lifecycle {
     ignore_changes = [
       initial_node_count,
+      node_config[0].labels,
+      node_config[0].resource_labels,
     ]
   }
 }

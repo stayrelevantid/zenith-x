@@ -25,3 +25,9 @@ resource "google_service_account_iam_member" "argocd_binding" {
   role               = "roles/iam.workloadIdentityUser"
   member             = "serviceAccount:${var.project_id}.svc.id.goog[argocd/argocd-server]"
 }
+
+resource "google_service_account_iam_member" "eso_binding" {
+  service_account_id = google_service_account.workload_sa.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "serviceAccount:${var.project_id}.svc.id.goog[external-secrets/external-secrets]"
+}
