@@ -1,0 +1,73 @@
+# ==============================================================================
+# Terraform
+# ==============================================================================
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfstate.lock.info
+.terraform.lock.hcl
+*.tfplan
+*.tfvars.json
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+crash.log
+crash.*.log
+
+# Sensitive variable files
+# terraform.tfvars is intentionally NOT ignored so team members can share defaults.
+# But you may want to ignore it if it contains secrets.
+# terraform.tfvars
+# *.auto.tfvars
+
+# ==============================================================================
+# GCP / Google Cloud
+# ==============================================================================
+*.json
+!package.json
+!package-lock.json
+
+# Application Default Credentials
+.config/gcloud/
+
+# ==============================================================================
+# Kubernetes / Helm
+# ==============================================================================
+kubeconfig
+*.kubeconfig
+.kube/
+
+# Helm chart dependencies
+charts/
+*.tgz
+
+# ==============================================================================
+# Environment & Secrets
+# ==============================================================================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+
+# ==============================================================================
+# OS & Editors
+# ==============================================================================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.code-workspace
+
+# ==============================================================================
+# Logs & Temp
+# ==============================================================================
+*.log
+tmp/
+temp/
