@@ -15,17 +15,6 @@ spec:
       values: |
         deployment:
           replicas: 1
-          initContainers:
-            - name: volume-permissions
-              image: busybox:latest
-              command: ["sh", "-c", "touch /data/acme.json; chown -v 65532:65532 /data/acme.json; chmod -v 600 /data/acme.json"]
-              securityContext:
-                runAsNonRoot: false
-                runAsGroup: 0
-                runAsUser: 0
-              volumeMounts:
-                - name: data
-                  mountPath: /data
         service:
           type: LoadBalancer
           spec:
@@ -42,10 +31,6 @@ spec:
           web:
             redirectTo:
               port: websecure
-        additionalArguments:
-          - "--certificatesresolvers.letsencrypt.acme.email=admin@masmasdeploy.my.id"
-          - "--certificatesresolvers.letsencrypt.acme.storage=/data/acme.json"
-          - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
         persistence:
           enabled: true
           size: 128Mi
