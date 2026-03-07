@@ -99,3 +99,15 @@ resource "google_artifact_registry_repository" "gar" {
 
   depends_on = [google_project_service.artifactregistry_api]
 }
+
+# Workload Identity Federation (GitHub Actions → GCP keyless auth)
+module "wif" {
+  source = "./modules/wif"
+
+  project_id            = var.project_id
+  github_org            = "stayrelevantid"
+  github_repo           = "zenith-x"
+  service_account_email = module.iam.service_account_email
+
+  depends_on = [module.iam]
+}
