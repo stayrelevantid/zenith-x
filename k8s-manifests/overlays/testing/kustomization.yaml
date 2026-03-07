@@ -6,7 +6,7 @@ resources:
 # Image tag will be updated by GitHub Actions CI/CD
 images:
   - name: asia-southeast2-docker.pkg.dev/stayrelevantid/zenith-x-registry/app
-    newTag: f60eb6b1e4e9201327c4f6635ba151b94d1e2c61
+    newTag: 64b846f116cf84d79a00a1184fa7f9248f53b109
 commonLabels:
   env: testing
 patches:
