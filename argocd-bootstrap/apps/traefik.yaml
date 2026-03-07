@@ -15,6 +15,17 @@ spec:
       values: |
         deployment:
           replicas: 1
+          initContainers:
+            - name: volume-permissions
+              image: busybox:latest
+              command: ["sh", "-c", "touch /data/acme.json; chmod -v 600 /data/acme.json"]
+              securityContext:
+                runAsNonRoot: false
+                runAsGroup: 0
+                runAsUser: 0
+              volumeMounts:
+                - name: data
+                  mountPath: /data
         service:
           type: LoadBalancer
         providers:
@@ -37,17 +48,6 @@ spec:
           enabled: true
           size: 128Mi
           path: /data
-        initContainers:
-          - name: volume-permissions
-            image: busybox:latest
-            command: ["sh", "-c", "touch /data/acme.json; chmod -v 600 /data/acme.json"]
-            securityContext:
-              runAsNonRoot: false
-              runAsGroup: 0
-              runAsUser: 0
-            volumeMounts:
-              - name: data
-                mountPath: /data
         commonLabels:
           project: zenith-x
           env: testing
