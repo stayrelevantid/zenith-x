@@ -25,6 +25,21 @@ spec:
         logs:
           general:
             level: INFO
+        ports:
+          web:
+            redirectTo:
+              port: websecure
+        certificatesResolvers:
+          letsencrypt:
+            acme:
+              email: admin@masmasdeploy.my.id
+              storage: /data/acme.json
+              httpChallenge:
+                entryPoint: web
+        persistence:
+          enabled: true
+          size: 128Mi
+          path: /data
         commonLabels:
           project: zenith-x
           env: testing
