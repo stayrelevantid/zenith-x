@@ -127,7 +127,29 @@ terraform destroy
 ## 🔗 Endpoints
 - **App:** [https://masmasdeploy.my.id](https://masmasdeploy.my.id)
 - **Health:** `/health`
+- **Secret Test:** `/secret` (Retrieves value from Google Secret Manager)
 - **SSL Certificates:** Automatically managed by cert-manager and issued by Let's Encrypt.
+
+## 📝 Troubleshooting & Lessons Learned
+
+During the laboratory execution, several critical issues were identified and resolved:
+
+### 1. GKE Cluster Recreation Loop
+- **Problem**: Terraform repeatedly attempted to recreate the GKE cluster and node pools due to minor state drift or external changes (e.g., auto-updates or control plane modifications).
+- **Solution**: Implemented `lifecycle { ignore_changes = [...] }` blocks in Terraform for `google_container_cluster` and `google_container_node_pool`.
+- **Lesson**: For production-like environments, sensitive infrastructure like GKE should use `ignore_changes` to prevent catastrophic unintended recreations during automated CI/CD runs.
+
+### 2. External Secrets & Workload Identity (WIF)
+- **Problem**: The External Secrets Operator (ESO) failed with `PermissionDenied` when accessing GSM, despite correct IAM roles on the Google Service Account (GSA).
+- **Solution**:
+    - Verified the Kubernetes ServiceAccount (KSA) was properly annotated with `iam.gke.io/gcp-service-account`.
+    - Ensured the `ExternalSecret` manifest correctly referenced the `ClusterSecretStore`.
+    - Restarted the ESO deployment to ensure the annotation was picked up by the running pods.
+- **Lesson**: KSA annotations are critical for WIF. Incorrect indentation in Helm values (ArgoCD manifests) can silently prevent annotation application. Always verify KSA metadata first when WIF fails.
+
+### 3. ArgoCD Sync Dependencies
+- **Problem**: Some resources failed to sync because their dependencies (CRDs) were not yet ready.
+- **Solution**: Used the ArgoCD "Root App" (App-of-Apps) pattern and manually triggered hard refreshes when necessary to force reconciliation of fixed manifests.
 
 ---
 Managed by **Antigravity AI**
