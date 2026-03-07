@@ -22,6 +22,12 @@ spec:
           image: asia-southeast2-docker.pkg.dev/stayrelevantid/zenith-x-registry/app:latest
           ports:
             - containerPort: 8080
+          env:
+            - name: APP_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: zenith-secrets
+                  key: APP_SECRET
           resources:
             requests:
               cpu: "100m"

@@ -1,4 +1,4 @@
-// Version 1.0.1 - Final Trigger
+// Version 1.0.2 - External Secrets Test
 package main
 
 import (
@@ -20,7 +20,7 @@ type Response struct {
 	Hostname  string    `json:"hostname"`
 }
 
-var version = getEnv("APP_VERSION", "1.0.0")
+var version = getEnv("APP_VERSION", "1.0.2")
 
 func getEnv(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
@@ -52,6 +52,14 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func handleSecret(w http.ResponseWriter, r *http.Request) {
+	secretValue := getEnv("APP_SECRET", "not-set")
+	writeJSON(w, http.StatusOK, map[string]string{
+		"secret_status": "present",
+		"secret_value":  secretValue,
+	})
+}
+
 func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -60,6 +68,7 @@ func main() {
 
 	r.Get("/", handleRoot)
 	r.Get("/health", handleHealth)
+	r.Get("/secret", handleSecret)
 
 	port := getEnv("PORT", "8080")
 	log.Printf("🚀 Zenith-X server starting on port %s (version %s)", port, version)
