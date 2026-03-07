@@ -8,7 +8,7 @@ metadata:
 spec:
   acme:
     server: https://acme-v02.api.letsencrypt.org/directory
-    email: admin@stayrelevant.id  # ganti dengan email aktif
+    email: admin@masmasdeploy.my.id
     privateKeySecretRef:
       name: letsencrypt-prod
     solvers:

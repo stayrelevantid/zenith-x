@@ -9,7 +9,7 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: Host(`app.example.com`)  # Ganti dengan domain Anda
+    - match: Host(`masmasdeploy.my.id`)
       kind: Rule
       services:
         - name: app
