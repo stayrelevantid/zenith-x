@@ -29,13 +29,10 @@ spec:
           web:
             redirectTo:
               port: websecure
-        certificatesResolvers:
-          letsencrypt:
-            acme:
-              email: admin@masmasdeploy.my.id
-              storage: /data/acme.json
-              httpChallenge:
-                entryPoint: web
+        additionalArguments:
+          - "--certificatesresolvers.letsencrypt.acme.email=admin@masmasdeploy.my.id"
+          - "--certificatesresolvers.letsencrypt.acme.storage=/data/acme.json"
+          - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
         persistence:
           enabled: true
           size: 128Mi
