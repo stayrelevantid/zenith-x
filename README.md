@@ -1,155 +1,177 @@
 # Project Zenith-X 🚀
 
-Zenith-X is a robust GitOps-driven cloud infrastructure project on Google Cloud Platform (GCP). It automates the deployment of a Golang application into a Google Kubernetes Engine (GKE) cluster using ArgoCD and GitHub Actions.
+Zenith-X adalah project lab untuk membangun infrastruktur Cloud-Native di Google Cloud Platform (GCP) menggunakan pendekatan **GitOps**. Seluruh proses — mulai dari provisioning server, deploy aplikasi, hingga manajemen secret — diotomasi sepenuhnya menggunakan Terraform, ArgoCD, dan GitHub Actions.
 
-## 🏗 Architecture
+**Live URL:** [https://masmasdeploy.my.id](https://masmasdeploy.my.id)
+
+---
+
+## 🏗 Architecture Overview
 
 ```mermaid
-graph TD
-    subgraph "Local Development"
-        D[Developer] --> GS[Git Sources]
-    end
+graph LR
+    Dev[Developer] -->|git push| GitHub
 
     subgraph "GitHub"
-        GS --> GHA[GitHub Actions]
+        GitHub -->|Trigger| GHA[GitHub Actions]
     end
 
     subgraph "Google Cloud Platform"
-        GHA -->|Push Image| GAR[Artifact Registry]
-        GHA -->|Update Tags| GS
-        
+        GHA -->|1. Build & Push Image| GAR[Artifact Registry]
+        GHA -->|2. Update Image Tag| GitHub
+
         subgraph "GKE Cluster"
-            Argo[ArgoCD] -->|Sync Manifests| GS
-            Argo -->|Deploy| App[Go App Pods]
-            App -->|Pull| GAR
-            
-            Ingress[Traefik Ingress] --> App
-            Cert[Cert-Manager] --> Ingress
-            ESO[External Secrets] --> SecretMgr[Secret Manager]
+            ArgoCD -->|3. Detect Change & Sync| App[Go App v1.0.2]
+            App -->|Pull Image| GAR
+            Traefik[Traefik Ingress] -->|Route Traffic| App
+            CertMgr[Cert-Manager] -->|Issue SSL| Traefik
+            ESO[External Secrets Operator] -->|Fetch Secret| GSM[Secret Manager]
+            ESO -->|Inject as Env Var| App
         end
     end
 ```
 
+**Alur kerja secara sederhana:**
+1. Developer push kode ke GitHub.
+2. GitHub Actions otomatis build Docker image dan push ke Artifact Registry.
+3. GitHub Actions update tag image di manifest Kubernetes, lalu commit balik ke Git.
+4. ArgoCD mendeteksi perubahan di Git dan otomatis deploy versi terbaru ke GKE.
+5. Traefik mengarahkan traffic dari internet ke aplikasi, dengan SSL dari Let's Encrypt.
+6. External Secrets Operator mengambil secret dari Google Secret Manager dan inject ke aplikasi.
+
+---
+
 ## 🛠 Tech Stack
 
-- **Cloud:** Google Cloud Platform (GCP)
-- **IaC:** Terraform
-- **Orchestration:** GKE (Standard Cluster, Spot Nodes)
-- **GitOps:** ArgoCD
-- **Ingress:** Traefik
-- **SSL:** Cert-Manager (Let's Encrypt - HTTP-01 or TLS-ALPN-01)
-- **CI/CD:** GitHub Actions (with Workload Identity Federation)
-- **App:** Golang (chi router, Docker Multi-stage)
-- **Certificate Management:** Custom `Certificate` CRDs for automated issuance.
+| Kategori | Teknologi |
+| :--- | :--- |
+| **Cloud Provider** | Google Cloud Platform (GCP) |
+| **Infrastructure as Code** | Terraform (modular: VPC, GKE, IAM, WIF) |
+| **Kubernetes** | GKE Standard Cluster, Spot Node Pool (`e2-medium`) |
+| **GitOps Engine** | ArgoCD (App-of-Apps pattern) |
+| **Ingress Controller** | Traefik (IngressRoute CRD) |
+| **SSL/TLS** | Cert-Manager + Let's Encrypt (ClusterIssuer) |
+| **Secret Management** | External Secrets Operator + Google Secret Manager |
+| **CI/CD** | GitHub Actions + Workload Identity Federation (keyless auth) |
+| **Application** | Golang (chi router), Docker multi-stage build |
 
-## 🚀 Step-by-Step Guide
+---
 
-### 1. Prerequisites
-- Google Cloud SDK (`gcloud`) installed and authenticated.
-- Terraform installed.
-- Helm installed.
-- Access to a GitHub repository.
+## 📁 Project Structure
 
-### 2. Infrastructure Setup (Terraform)
-Navigate to the terraform directory and provision the resources:
+```text
+zenith-x/
+├── .github/workflows/        # CI/CD: build, push, update manifest
+│   └── ci-cd.yaml
+├── app/                      # Go application source code + Dockerfile
+│   ├── main.go               # Endpoints: /, /health, /secret
+│   └── Dockerfile
+├── argocd-bootstrap/         # ArgoCD GitOps bootstrap
+│   ├── root-app.yaml         # Root Application (App-of-Apps)
+│   ├── apps/                 # Child apps: traefik, cert-manager, eso, zenith-app
+│   └── configs/              # Cluster-wide configs: ClusterIssuer, ClusterSecretStore
+├── k8s-manifests/            # Kubernetes manifests (Kustomize)
+│   ├── base/                 # Deployment, Service, IngressRoute, ExternalSecret
+│   └── overlays/testing/     # Testing environment overrides
+└── terraform/                # GCP Infrastructure as Code
+    ├── modules/              # vpc, gke, iam, wif
+    ├── main.tf, variables.tf, terraform.tfvars
+    └── backend.tf            # GCS remote state
+```
+
+---
+
+## 🚀 Cara Menjalankan (Step-by-Step)
+
+### Prasyarat
+- Google Cloud SDK (`gcloud`) sudah terinstal dan terautentikasi.
+- Terraform, Helm, dan kubectl sudah terinstal.
+- Repository GitHub sudah disiapkan.
+
+### Step 1 — Provisioning Infrastructure
 ```bash
 cd terraform
-# Initialize and apply
 terraform init
 terraform apply
 ```
-*Note: This will create the VPC, GKE cluster, Artifact Registry, Service Accounts, and WIF Pool.*
+> Ini akan membuat: VPC, GKE Cluster, Artifact Registry, Service Account, dan Workload Identity Pool.
 
-### 3. Connect to GKE
-Update your kubeconfig to point to the new cluster:
+### Step 2 — Connect ke GKE Cluster
 ```bash
 gcloud container clusters get-credentials zenith-x-cluster-testing --region asia-southeast2
 ```
 
-### 4. Install ArgoCD
-Install ArgoCD using Helm and apply the bootstrap configuration:
+### Step 3 — Install ArgoCD & Bootstrap GitOps
 ```bash
-# Add ArgoCD Helm Repo
-helm repo add argo https://argoproj.github.io/argo-helm
-helm repo update
-
-# Install ArgoCD
 kubectl create namespace argocd
-helm install argocd argo/argo-cd --namespace argocd --set server.service.type=ClusterIP --set configs.params."server.insecure"=true --wait
+helm repo add argo https://argoproj.github.io/argo-helm && helm repo update
+helm install argocd argo/argo-cd -n argocd \
+  --set server.service.type=ClusterIP \
+  --set configs.params."server.insecure"=true --wait
 
-# Apply Root Application (GitOps Bootstrap)
+# Apply Root App → ArgoCD akan otomatis deploy semua child apps
 kubectl apply -f argocd-bootstrap/root-app.yaml
 ```
 
-### 5. CI/CD & WIF Configuration
-Setup GitHub Secrets for Workload Identity Federation:
-1. Go to your GitHub Repository -> Settings -> Secrets and variables -> Actions.
-2. Add the following secrets (get values from Terraform outputs or gcloud):
-    - `WIF_PROVIDER`: The full resource name of the WIF provider (e.g., `projects/.../global/workloadIdentityPools/...`).
-    - `WIF_SERVICE_ACCOUNT`: The service account email (e.g., `zenith-x-gke-sa@stayrelevantid.iam.gserviceaccount.com`).
+### Step 4 — Setup GitHub Secrets (untuk CI/CD)
+Di **GitHub → Settings → Secrets → Actions**, tambahkan:
+- `WIF_PROVIDER` — Full resource name dari WIF Provider.
+- `WIF_SERVICE_ACCOUNT` — Email service account (contoh: `zenith-x-gke-sa@stayrelevantid.iam.gserviceaccount.com`).
 
-### 6. Verify Deployment
-Once secrets are set, push a change to the `app/` directory. GitHub Actions will build the image, push it to GAR, and update the k8s manifests. ArgoCD will then sync the changes.
+### Step 5 — Test Deployment
+Push perubahan ke folder `app/`, lalu GitHub Actions akan otomatis:
+1. Build image → Push ke GAR
+2. Update image tag di `k8s-manifests/overlays/testing/kustomization.yaml`
+3. ArgoCD sync otomatis → Aplikasi ter-deploy
+
+**Akses ArgoCD UI:**
 ```bash
-# Access ArgoCD UI
-kubectl port-forward service/argocd-server -n argocd 8080:443
-# URL: https://localhost:8080 | User: admin
-```
-To get the ArgoCD admin password:
-```bash
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+# Buka: https://localhost:8080 | User: admin
+# Password:
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 ```
 
-## 🗑 Cleanup (Deleting Resources)
+---
 
-To avoid incurring costs, ensure you destroy the laboratory environment when finished:
+## 🔗 Endpoints
 
-### 1. Delete Kubernetes Resources (via ArgoCD or kubectl)
-It's cleaner to let ArgoCD delete its managed resources first, or simply proceed to terraform destroy.
+| Endpoint | Deskripsi |
+| :--- | :--- |
+| `/` | Info aplikasi: version, hostname, timestamp |
+| `/health` | Health check (status: healthy) |
+| `/secret` | Menampilkan secret dari Google Secret Manager (test ESO) |
 
-### 2. Destroy Infrastructure
+---
+
+## 🐛 Masalah yang Dihadapi & Solusi
+
+### 1. GKE Cluster Ter-recreate Terus oleh Terraform
+- **Masalah:** Setiap kali `terraform apply` dijalankan (baik manual maupun via CI/CD), Terraform mendeteksi perubahan kecil pada cluster (misalnya auto-upgrade, label internal GCP) dan memutuskan untuk **destroy lalu recreate** seluruh cluster. Ini sangat memakan waktu (~15 menit per recreate) dan menghancurkan semua yang sudah di-deploy.
+- **Akar Masalah:** Terraform membandingkan state file dengan kondisi aktual cluster. Parameter yang dikelola otomatis oleh GCP (seperti `node_version`, `node_config`) selalu berubah, sehingga Terraform menganggap ada "drift".
+- **Solusi:** Menambahkan blok `lifecycle { ignore_changes = [...] }` pada resource `google_container_cluster` dan `google_container_node_pool` di Terraform. Ini memberitahu Terraform untuk mengabaikan perubahan pada parameter tertentu yang dikelola oleh GCP.
+- **Lesson:** Untuk managed services seperti GKE, selalu gunakan `ignore_changes` agar Terraform tidak mencoba "memperbaiki" hal-hal yang memang dikelola oleh cloud provider.
+
+### 2. External Secrets Gagal: Permission Denied
+- **Masalah:** External Secrets Operator (ESO) gagal mengambil secret dari Google Secret Manager dengan error `PermissionDenied: secretmanager.versions.access denied`.
+- **Akar Masalah:** Meskipun IAM role (`roles/secretmanager.secretAccessor`) sudah benar di level GSA, dan IAM binding WIF sudah benar, ternyata **Kubernetes ServiceAccount (KSA) tidak memiliki annotation** `iam.gke.io/gcp-service-account`. Tanpa annotation ini, Workload Identity tidak tahu KSA mana yang boleh "menyamar" sebagai GSA.
+- **Solusi:** Menambahkan annotation WIF di Helm values untuk ESO melalui ArgoCD manifest. Setelah itu, restart deployment ESO agar pod menggunakan token baru.
+- **Lesson:** Ketika WIF gagal, **selalu cek annotation KSA terlebih dahulu**. Ini adalah titik kegagalan paling umum. Kesalahan indentasi kecil di YAML bisa menyebabkan annotation tidak ter-apply secara silent.
+
+### 3. Git Push Conflict dari CI/CD
+- **Masalah:** Saat push perubahan infrastructure ke Git, terjadi conflict karena GitHub Actions sudah melakukan commit (update image tag) di branch yang sama.
+- **Solusi:** Selalu lakukan `git pull --rebase` sebelum push untuk mengintegrasikan perubahan dari remote.
+
+---
+
+## 🗑 Cleanup
+
 ```bash
 cd terraform
 terraform destroy
 ```
-*Warning: This will delete the GKE cluster, VPC, and all associated data in the lab.*
-
-## 📁 Project Structure
-```text
-.
-├── .github/workflows/   # CI/CD Pipeline
-├── app/                 # Golang Application & Dockerfile
-├── argocd-bootstrap/    # ArgoCD Apps & Configs
-├── k8s-manifests/       # K8s Bases & Overlays (Kustomize)
-└── terraform/           # GCP Infrastructure
-```
-
-## 🔗 Endpoints
-- **App:** [https://masmasdeploy.my.id](https://masmasdeploy.my.id)
-- **Health:** `/health`
-- **Secret Test:** `/secret` (Retrieves value from Google Secret Manager)
-- **SSL Certificates:** Automatically managed by cert-manager and issued by Let's Encrypt.
-
-## 📝 Troubleshooting & Lessons Learned
-
-During the laboratory execution, several critical issues were identified and resolved:
-
-### 1. GKE Cluster Recreation Loop
-- **Problem**: Terraform repeatedly attempted to recreate the GKE cluster and node pools due to minor state drift or external changes (e.g., auto-updates or control plane modifications).
-- **Solution**: Implemented `lifecycle { ignore_changes = [...] }` blocks in Terraform for `google_container_cluster` and `google_container_node_pool`.
-- **Lesson**: For production-like environments, sensitive infrastructure like GKE should use `ignore_changes` to prevent catastrophic unintended recreations during automated CI/CD runs.
-
-### 2. External Secrets & Workload Identity (WIF)
-- **Problem**: The External Secrets Operator (ESO) failed with `PermissionDenied` when accessing GSM, despite correct IAM roles on the Google Service Account (GSA).
-- **Solution**:
-    - Verified the Kubernetes ServiceAccount (KSA) was properly annotated with `iam.gke.io/gcp-service-account`.
-    - Ensured the `ExternalSecret` manifest correctly referenced the `ClusterSecretStore`.
-    - Restarted the ESO deployment to ensure the annotation was picked up by the running pods.
-- **Lesson**: KSA annotations are critical for WIF. Incorrect indentation in Helm values (ArgoCD manifests) can silently prevent annotation application. Always verify KSA metadata first when WIF fails.
-
-### 3. ArgoCD Sync Dependencies
-- **Problem**: Some resources failed to sync because their dependencies (CRDs) were not yet ready.
-- **Solution**: Used the ArgoCD "Root App" (App-of-Apps) pattern and manually triggered hard refreshes when necessary to force reconciliation of fixed manifests.
+> ⚠️ Ini akan menghapus **semua** resource GCP termasuk GKE cluster, VPC, dan data di dalamnya.
 
 ---
+
 Managed by **Antigravity AI**
