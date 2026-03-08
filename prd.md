@@ -1,50 +1,138 @@
 # Technical Specification: PROJECT ZENITH-X
 
-**Objective**: Build a Standardized MVP Cloud-Native Infrastructure on GCP using GitOps.
+**Objective:** Membangun infrastruktur Cloud-Native standar (MVP) di GCP menggunakan GitOps sebagai pendekatan utama untuk deployment dan manajemen konfigurasi.
+
+---
 
 ## 1. Cloud Infrastructure (Terraform)
-- **Provider**: Google Cloud Platform (GCP).
-- **Networking**: Custom VPC, 1 Private Subnet, Cloud NAT, and Cloud Router.
-- **Compute**: GKE Standard Cluster with a Spot VM Node Pool (machine type: `e2-medium`).
-- **Security**: Enable Workload Identity on GKE.
-- **Backend**: Remote State using Google Cloud Storage (GCS).
-- **Secrets**: Setup Google Secret Manager (GSM).
-- **Registry**: Create Google Artifact Registry (GAR) for Docker images.
 
-## 2. Kubernetes Add-ons (Helm & ArgoCD)
-- **ArgoCD**: Core GitOps engine (App-of-Apps pattern).
-- **Ingress**: Traefik (Custom Resources/CRD support).
-- **SSL**: Cert-Manager with Let's Encrypt (ClusterIssuer).
-- **Secrets**: External Secret Operator (ESO) to sync GSM to K8s Secrets.
+Seluruh infrastruktur di-provisioning menggunakan Terraform dengan pendekatan modular:
 
-## 3. Project Structure (Best Practice)
-```text
-zenith-x/
-├── terraform/                # Infrastructure as Code
-│   ├── modules/              # Reusable modules (vpc, gke, iam)
-│   ├── main.tf               # Root module
-│   ├── variables.tf          # Configurable inputs
-│   ├── terraform.tfvars      # Environment values
-│   └── backend.tf            # GCS Remote state config
-├── argocd-bootstrap/         # Root App-of-Apps manifest
-│   ├── apps/                 # Child applications (traefik, cert-manager, eso)
-│   └── projects/             # ArgoCD project definitions
-├── k8s-manifests/            # Application manifests (GitOps Repo)
-│   ├── overlays/             # Environment specific (testing)
-│   └── base/                 # Base k8s resources (Deploy, Service, Ingress)
-└── .github/workflows/        # CI/CD Pipelines
-    └── ci-cd.yaml            # Build, Push to GAR, & Update Manifest
+| Resource | Detail |
+| :--- | :--- |
+| **Provider** | Google Cloud Platform (GCP), Region `asia-southeast2` |
+| **Networking** | Custom VPC, 1 Private Subnet, Cloud NAT, Cloud Router |
+| **Compute** | GKE Standard Cluster, Spot Node Pool (`e2-medium`, 3 nodes) |
+| **Security** | Workload Identity enabled, IAM least-privilege |
+| **State** | Remote state di Google Cloud Storage (GCS) |
+| **Secrets** | Google Secret Manager (GSM) |
+| **Registry** | Google Artifact Registry (GAR) untuk Docker images |
+
+---
+
+## 2. Kubernetes Add-ons (via ArgoCD)
+
+Semua add-on di-deploy secara otomatis oleh ArgoCD menggunakan pola **App-of-Apps**:
+
+| Add-on | Fungsi |
+| :--- | :--- |
+| **ArgoCD** | GitOps engine — sinkronisasi manifest dari Git ke cluster |
+| **Traefik** | Ingress controller — routing traffic dan TLS termination |
+| **Cert-Manager** | Otomasi SSL certificate dari Let's Encrypt |
+| **External Secrets Operator** | Sinkronisasi secret dari GSM ke Kubernetes Secret |
+
+**Flow Add-on Deployment:**
+```
+root-app.yaml → ArgoCD membaca folder apps/ → Deploy child apps secara paralel:
+  ├── traefik (Helm chart)
+  ├── cert-manager (Helm chart)
+  ├── external-secrets (Helm chart + WIF annotation)
+  ├── cluster-issuer (Let's Encrypt ClusterIssuer)
+  ├── cluster-configs (ClusterSecretStore)
+  └── zenith-app (Kustomize manifests)
 ```
 
-## 4. Execution Phases (Workflow)
-- **Phase 1 (Infra)**: [COMPLETED] `terraform init` -> `terraform apply`. Fokus pada networking, GKE Spot, dan IAM Roles untuk Workload Identity.
-- **Phase 2 (GitOps)**: [COMPLETED] Install ArgoCD via Helm. Point ArgoCD ke folder `argocd-bootstrap/`.
-- **Phase 3 (Core Services)**: [COMPLETED] ArgoCD otomatis men-deploy Traefik, Cert-Manager, dan ESO berdasarkan manifest di Git.
-- **Phase 4 (App Deployment)**: [COMPLETED] GitHub Actions memicu build image ke GAR dan mengupdate tag di `k8s-manifests/`. ArgoCD melakukan sinkronisasi otomatis.
-- **Phase 5 (Cleanup)**: [PLANNED] Prosedur manual `terraform destroy` dari terminal lokal.
+---
 
-## 5. Specific Constraints for AI Generator
-- **Labeling**: All resources must have label `project: zenith-x` and `env: testing`.
-- **Spot Instances**: Use `spot = true` and `preemptible = true` in GKE node pool configuration.
-- **Secret Management**: Do NOT hardcode any credentials. Use `ExternalSecret` CRD.
-- **Ingress**: Use Traefik `IngressRoute` or standard Ingress with Traefik annotations.
+## 3. Application (Go v1.0.2)
+
+Aplikasi Go sederhana dengan endpoint untuk validasi infrastruktur:
+
+| Endpoint | Response |
+| :--- | :--- |
+| `GET /` | `{ status, message, version, hostname, timestamp }` |
+| `GET /health` | `{ status: "healthy" }` |
+| `GET /secret` | `{ secret_status, secret_value }` — dari GSM via ESO |
+
+**CI/CD Flow:**
+```
+Developer push ke app/ → GitHub Actions:
+  1. Build Docker image (multi-stage)
+  2. Push ke Artifact Registry
+  3. Update image tag di k8s-manifests/overlays/testing/kustomization.yaml
+  4. Commit & push tag update ke Git
+  → ArgoCD detect perubahan → Auto-sync → Deploy ke GKE
+```
+
+---
+
+## 4. Project Structure
+
+```text
+zenith-x/
+├── .github/workflows/ci-cd.yaml   # CI/CD Pipeline
+├── app/                            # Go app + Dockerfile
+├── argocd-bootstrap/
+│   ├── root-app.yaml               # Entry point ArgoCD
+│   ├── apps/                       # Child app definitions
+│   │   ├── traefik.yaml
+│   │   ├── cert-manager.yaml
+│   │   ├── external-secrets.yaml
+│   │   ├── cluster-issuer.yaml
+│   │   ├── cluster-configs.yaml
+│   │   └── zenith-app.yaml
+│   └── configs/                    # Cluster-wide resources
+│       ├── cluster-issuer/
+│       └── external-secrets/
+├── k8s-manifests/
+│   ├── base/                       # Deployment, Service, IngressRoute, ExternalSecret
+│   └── overlays/testing/           # Testing env overrides (replica, image tag)
+└── terraform/
+    ├── modules/                    # vpc, gke, iam, wif
+    ├── main.tf, variables.tf
+    ├── terraform.tfvars
+    └── backend.tf
+```
+
+---
+
+## 5. Execution Phases
+
+| Phase | Status | Deskripsi |
+| :--- | :--- | :--- |
+| **Phase 1 — Infra** | ✅ Done | Terraform provisioning: VPC, GKE (Spot), IAM, WIF, GAR |
+| **Phase 2 — GitOps** | ✅ Done | Install ArgoCD via Helm, apply root-app.yaml |
+| **Phase 3 — Core Services** | ✅ Done | ArgoCD auto-deploy: Traefik, Cert-Manager, ESO |
+| **Phase 4 — App Deploy** | ✅ Done | CI/CD pipeline aktif, app v1.0.2 live, ESO terintegrasi |
+| **Phase 5 — Cleanup** | 🟡 Ready | `terraform destroy` dari terminal lokal |
+
+---
+
+## 6. Masalah & Solusi
+
+| # | Masalah | Akar Penyebab | Solusi |
+| :--- | :--- | :--- | :--- |
+| 1 | **GKE cluster ter-recreate** setiap `terraform apply` | Terraform mendeteksi drift pada parameter yang dikelola GCP (node_version, dll) | Tambahkan `lifecycle { ignore_changes }` di resource cluster & node pool |
+| 2 | **ESO gagal akses GSM** (`PermissionDenied`) | KSA `external-secrets` tidak memiliki annotation WIF (`iam.gke.io/gcp-service-account`) | Tambahkan annotation di Helm values ESO via ArgoCD, lalu restart operator |
+| 3 | **Git push conflict** saat push infrastructure changes | GitHub Actions sudah commit update image tag di branch yang sama | Gunakan `git pull --rebase` sebelum push |
+
+---
+
+## 7. Lessons Learned
+
+1. **Terraform + Managed Services:** GKE dikelola oleh GCP secara otomatis (auto-upgrade, node repair). Terraform harus di-konfigurasi agar **tidak mencoba mengontrol** parameter yang berubah secara otomatis. Gunakan `ignore_changes` untuk menghindari recreation yang tidak perlu.
+
+2. **Workload Identity = KSA Annotation:** Seluruh chain WIF (IAM binding, GSA role) akan gagal jika KSA tidak memiliki annotation `iam.gke.io/gcp-service-account`. Ini adalah **single point of failure** yang paling sering terlewat.
+
+3. **GitOps Discipline:** Semua perubahan harus melalui Git. Jika CI/CD dan developer mengubah branch yang sama, **rebase** adalah cara paling aman untuk menghindari conflict.
+
+4. **YAML Indentation Matters:** Kesalahan indentasi kecil di Helm values (yang di-embed dalam ArgoCD Application YAML) bisa menyebabkan konfigurasi **tidak ter-apply secara silent** — tidak ada error, tapi juga tidak bekerja.
+
+---
+
+## 8. Constraints
+
+- Semua resource wajib memiliki label `project: zenith-x` dan `env: testing`.
+- Node pool wajib menggunakan Spot Instance (`spot = true`).
+- Tidak boleh hardcode credential — gunakan `ExternalSecret` CRD.
+- Ingress menggunakan Traefik `IngressRoute` CRD.
