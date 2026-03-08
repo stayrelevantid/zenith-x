@@ -169,8 +169,12 @@ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.pas
 ```bash
 cd terraform
 terraform destroy
+
+# Cleanup state bucket
+cd state-bootstrap
+terraform destroy
 ```
-> ⚠️ Ini akan menghapus **semua** resource GCP termasuk GKE cluster, VPC, dan data di dalamnya.
+> ✅ Seluruh resource GCP untuk lab ini (GKE, VPC, WIF, GAR, Secret Manager, dan GCS State Bucket) telah berhasil di-**destroy** sepenuhnya. Tidak ada resource yang tersisa.
 
 ---
 

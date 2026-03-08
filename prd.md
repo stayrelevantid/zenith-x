@@ -104,7 +104,7 @@ zenith-x/
 | **Phase 2 — GitOps** | ✅ Done | Install ArgoCD via Helm, apply root-app.yaml |
 | **Phase 3 — Core Services** | ✅ Done | ArgoCD auto-deploy: Traefik, Cert-Manager, ESO |
 | **Phase 4 — App Deploy** | ✅ Done | CI/CD pipeline aktif, app v1.0.2 live, ESO terintegrasi |
-| **Phase 5 — Cleanup** | 🟡 Ready | `terraform destroy` dari terminal lokal |
+| **Phase 5 — Cleanup** | ✅ Done | `terraform destroy` untuk semua infra & GCS state bucket |
 
 ---
 
